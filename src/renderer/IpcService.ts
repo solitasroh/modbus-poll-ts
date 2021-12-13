@@ -1,5 +1,5 @@
 import { IpcRenderer, IpcRendererEvent } from "electron";
-
+import { Buffer } from "buffer";
 export type IpcEventHandler = (event: IpcRendererEvent, args: any[]) => void;
 
 export default class IpcService {
@@ -73,7 +73,7 @@ export default class IpcService {
   public readHoldingRegister(
     address: number,
     length: number,
-    callback: (data: number[]) => void
+    callback: (data: Buffer) => void
   ): void {
     if (!this.ipcRenderer) {
       this.initIpcRenderer();
@@ -85,7 +85,8 @@ export default class IpcService {
     this.ipcRenderer.send("MB_FC3_REQ", { address, length });
     this.ipcRenderer.on("MB_FC3_RESP", (event, response) => {
       console.log("resp FC3");
-      callback(response);
+      const buffer = Buffer.from(response); // 왜 이래야하는지 모르겠음 ㅠ
+      callback(buffer);
     });
   }
 

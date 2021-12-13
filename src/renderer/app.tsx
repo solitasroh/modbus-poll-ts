@@ -2,6 +2,7 @@ import React, { ChangeEvent, ReactElement, useState, useEffect } from "react";
 import IpcService from "./IpcService";
 import { createGlobalStyle } from "styled-components";
 import reset from "styled-reset";
+import { Buffer } from "buffer";
 import {
   Navbar,
   NavbarGroup,
@@ -20,7 +21,6 @@ import {
   EditableCell2,
 } from "@blueprintjs/table";
 import "@blueprintjs/table/lib/css/table.css";
-import { RowHeader } from "@blueprintjs/table/lib/esm/headers/rowHeader";
 
 const service = IpcService.getInstance();
 
@@ -65,7 +65,7 @@ interface ConnectConfig {
 }
 
 export default function app(): ReactElement {
-  const [result, setResult] = useState<number[]>();
+  const [result, setResult] = useState<Buffer>();
   const [address, setAddress] = useState<number>(0);
   const [isOpen, setIsOpen] = useState<boolean>();
   const [isConnect, setConnected] = useState<boolean>(false);
@@ -143,33 +143,38 @@ export default function app(): ReactElement {
     }
   };
 
-  const signedCellRenderer = (rowIndex: number) => (
-    <Cell>{`${result?.length > rowIndex ? result[rowIndex] : 0}`}</Cell>
-  );
+  const signedCellRenderer = (rowIndex: number) => {
+    let value = 0;
+    if (result) {
+      value = result.readInt16BE(rowIndex * 2);
+    }
+    return <Cell>{value}</Cell>;
+  };
 
-  const unsignedCellRenderer = (rowIndex: number) => (
-    <Cell>{`${result?.length > rowIndex ? result[rowIndex] >>> 0 : 0}`}</Cell>
-  );
+  const unsignedCellRenderer = (rowIndex: number) => {
+    let value = 0;
+    if (result) {
+      value = result.readUInt16BE(rowIndex * 2);
+    }
+    return <Cell>{value}</Cell>;
+  };
 
   const floatCellRenderer = (rowIndex: number) => {
     let value = 0;
-    if (result) {
-      if (rowIndex % 2 == 0 && rowIndex < quantity - 1) {
-        const b = Buffer.alloc(4);
-        b.writeUInt16BE(result[rowIndex], 0);
-        b.writeUInt16BE(result[rowIndex + 1], 2);
-        value = b.readFloatBE(0);
-      }
+    if (result && rowIndex % 2 == 0) {
+      value = result.readFloatBE(rowIndex * 2);
     }
 
     return <Cell>{rowIndex % 2 == 0 ? `${value}` : `-`}</Cell>;
   };
 
-  const hexCellRenderer = (rowIndex: number) => (
-    <Cell>{`0x${
-      result?.length > rowIndex ? result[rowIndex].toString(16) : 0
-    }`}</Cell>
-  );
+  const hexCellRenderer = (rowIndex: number) => {
+    let value = 0;
+    if (result) {
+      value = result.readUInt16BE(rowIndex * 2);
+    }
+    return <Cell>{value.toString(16)}</Cell>;
+  };
 
   const rowHeaderRender = (rowIndex: number) => (
     <RowHeaderCell

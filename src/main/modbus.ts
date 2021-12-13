@@ -32,7 +32,7 @@ export class ModbusService {
       const { host, port, timeout, pollingInterval }: ModbusConnectOpts = args;
 
       this.interval = pollingInterval;
-      console.log(this.interval);
+
       if (this.interval < 1000) {
         this.interval = 3000;
       }
@@ -63,7 +63,7 @@ export class ModbusService {
             address,
             length
           );
-          event.sender.send("MB_FC3_RESP", result.response.body.valuesAsArray);
+          event.sender.send("MB_FC3_RESP", result.response.body.valuesAsBuffer);
         } catch (error) {
           console.log(error);
         }
