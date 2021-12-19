@@ -1,8 +1,7 @@
-import React, { ChangeEvent, ReactElement, useState, useEffect } from "react";
+import React, { ReactElement, useState, useEffect } from "react";
 import IpcService from "./IpcService";
 import { createGlobalStyle } from "styled-components";
 import reset from "styled-reset";
-import { Buffer } from "buffer";
 import {
   Navbar,
   NavbarGroup,
@@ -13,13 +12,7 @@ import {
   Button,
 } from "@blueprintjs/core";
 import ConnectDialog from "./ConnectDialog";
-import {
-  Cell,
-  Column,
-  Table2,
-  RowHeaderCell,
-  EditableCell2,
-} from "@blueprintjs/table";
+
 import "@blueprintjs/table/lib/css/table.css";
 import PollPage from "./PollPage";
 
@@ -66,23 +59,9 @@ interface ConnectConfig {
 }
 
 export default function app(): ReactElement {
-  const [result, setResult] = useState<Buffer>();
-  const [address, setAddress] = useState<number>(0);
   const [isOpen, setIsOpen] = useState<boolean>();
   const [isConnect, setConnected] = useState<boolean>(false);
-  const [requestChanged, setRequestChange] = useState(false);
-  const [quantity, setQuantity] = useState(10);
   const [connectionString, setConnectionString] = useState("connect config");
-
-  const onTextChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const addr = parseInt(e.target.value);
-    setAddress(addr);
-  };
-
-  const onQuantityChanged = (e: ChangeEvent<HTMLInputElement>) => {
-    const quanitity = parseInt(e.target.value);
-    setQuantity(quanitity);
-  };
 
   useEffect(() => {
     service.connectionStateCheck((evt, args) => {
@@ -118,10 +97,6 @@ export default function app(): ReactElement {
     []
   );
 
-  const readRequest = () => {
-    setRequestChange(true);
-  };
-
   const connectionConfigClicked = async () => {
     if (isConnect) {
       service.disconnectServer();
@@ -147,26 +122,13 @@ export default function app(): ReactElement {
           ></Button>
         </NavbarGroup>
       </Navbar>
-      <div>
+      <div style={{ display: "flex" }}>
         <ConnectDialog
           isOpen={isOpen}
           handleClose={handleConnectionServer}
         ></ConnectDialog>
-        <input
-          type="text"
-          name="address"
-          onChange={onTextChange}
-          value={address}
-        />
-        <input
-          type="text"
-          name="quanitity"
-          value={quantity}
-          onChange={onQuantityChanged}
-        ></input>
-        <button onClick={readRequest}>request</button>
 
-        <PollPage address={address} quantity={quantity} />
+        <PollPage />
       </div>
     </>
   );

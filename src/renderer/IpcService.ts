@@ -1,6 +1,6 @@
 import { IpcRenderer, IpcRendererEvent } from "electron";
 import { Buffer } from "buffer";
-export type IpcEventHandler = (event: IpcRendererEvent, args: any[]) => void;
+export type IpcEventHandler = (event: IpcRendererEvent, ...args: any[]) => void;
 
 export default class IpcService {
   private static instance: IpcService;
@@ -83,14 +83,17 @@ export default class IpcService {
     this.ipcRenderer.removeAllListeners("MB_FC3_RESP");
 
     this.ipcRenderer.send("MB_FC3_REQ", { address, length });
-    this.ipcRenderer.on("MB_FC3_RESP", (event, response) => {
-      console.log("resp FC3");
-      const buffer = Buffer.from(response); // 왜 이래야하는지 모르겠음 ㅠ
-      callback(buffer);
-    });
+    // this.ipcRenderer.on("MB_FC3_RESP", (event, response) => {
+    //   console.log("resp FC3");
+    //   const buffer = Buffer.from(response); // 왜 이래야하는지 모르겠음 ㅠ
+    //   callback(buffer);
+    // });
   }
 
   public on(channel: string, eventHandler: IpcEventHandler): void {
+    if (!this.ipcRenderer) {
+      this.initIpcRenderer();
+    }
     this.ipcRenderer.on(channel, eventHandler);
   }
 
