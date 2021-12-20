@@ -11,4 +11,5 @@ export interface IpcMainEventArgs {
 export interface ModbusRequestArgs {
   address: number;
   length: number;
+  scanRate: number;
 }

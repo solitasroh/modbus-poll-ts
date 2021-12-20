@@ -108,7 +108,7 @@ export class ModbusService {
 
   private pollRegisters = (
     event: IpcMainEvent,
-    { address, length }: ModbusRequestArgs
+    { address, length, scanRate }: ModbusRequestArgs
   ) => {
     console.log("FC3 address: ", address);
 
@@ -130,7 +130,7 @@ export class ModbusService {
         console.log("read register error: ", error);
         clearInterval(this.intervalTimer);
       }
-    }, this.interval);
+    }, scanRate);
   };
 
   private notifyConnectionState = () => {

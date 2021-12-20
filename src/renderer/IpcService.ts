@@ -73,13 +73,13 @@ export default class IpcService {
   public readHoldingRegister(
     address: number,
     length: number,
-    callback: (data: Buffer) => void
+    scanRate: number,
   ): void {
     if (!this.ipcRenderer) {
       this.initIpcRenderer();
     }
 
-    this.ipcRenderer.send(FC3_REQ, { address, length });
+    this.ipcRenderer.send(FC3_REQ, { address, length, scanRate });
   }
 
   public on(channel: string, eventHandler: IpcEventHandler): void {

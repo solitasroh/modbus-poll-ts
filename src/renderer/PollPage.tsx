@@ -1,4 +1,4 @@
-import { Button, Card, H5, H6 } from "@blueprintjs/core";
+import React, { ReactElement, useEffect, useState } from "react";
 import {
   Cell,
   Column,
@@ -6,17 +6,12 @@ import {
   RowHeaderCell,
   Table2,
 } from "@blueprintjs/table";
-import { FC3_POLL_RESP } from "@src/IpcMessageDefine";
-import React, { ReactElement, useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
 import styled from "styled-components";
-import IpcService from "./IpcService";
 
-const Form = styled.form`
-  display: flex;
-  align-items: flex-start;
-  flex-direction: column;
-`;
+import IpcService from "./IpcService";
+import ReadWriteDefinition from "./ReadWriteDefinition";
+
+import { FC3_POLL_RESP } from "@src/IpcMessageDefine";
 
 const Container = styled.div`
   display: flex;
@@ -24,41 +19,16 @@ const Container = styled.div`
   align-items: stretch;
 `;
 
-const Label = styled.label`
-  font-size: 12px;
-  margin: 3px 0px;
-`;
-
-const Input = styled.input.attrs(() => ({ type: "text" }))`
-  font-size: 12px;
-  margin: 3px 0px;
-`;
-
-const Submit = styled(Button)`
-  font-size: 12px;
-  margin: 3px 0px;
-`;
-
 const UserTable = styled(Table2)`
   margin: 5px;
 `;
 
-const UserCard = styled(Card)`
-  height: 100%;
-`;
-
 const service = IpcService.getInstance();
-
-interface request {
-  address: number;
-  quantity: number;
-}
 
 export default function PollPage(): ReactElement {
   const [result, setResult] = useState<Buffer>();
   const [address, setAddress] = useState(1);
   const [quantity, setQuantity] = useState(10);
-  const { register, handleSubmit } = useForm();
 
   useEffect(() => {
     service.on(FC3_POLL_RESP, (event, args) => {
@@ -129,29 +99,16 @@ export default function PollPage(): ReactElement {
 
   const AliasColumn = (rowIndex: number) => <EditableCell2></EditableCell2>;
 
-  const onSubmit = (data: request) => {
-    console.log(data);
-    if (data.address > 0 && data.address < 65535) setAddress(data.address);
+  const callbackFunc = (address: number, quantity: number) => {
+    if (address > 0 && address < 65535) setAddress(address);
     else return;
-    if (data.quantity > 0 && data.quantity < 125) setQuantity(data.quantity);
+    if (quantity > 0 && quantity < 125) setQuantity(quantity);
     else return;
-    service.readHoldingRegister(data.address, data.quantity, (resp) => {
-      setResult(resp);
-    });
   };
 
   return (
     <Container>
-      <UserCard>
-        <H6>Register Configuration</H6>
-        <Form onSubmit={handleSubmit(onSubmit)}>
-          <Label>start address</Label>
-          <Input type="text" {...register("address")}></Input>
-          <Label>quantity</Label>
-          <Input type="text" {...register("quantity")}></Input>
-          <Submit type="submit">submit</Submit>
-        </Form>
-      </UserCard>
+      <ReadWriteDefinition callback={callbackFunc} />
 
       <UserTable numRows={quantity} rowHeaderCellRenderer={rowHeaderRender}>
         <Column name="alias" cellRenderer={AliasColumn}></Column>
