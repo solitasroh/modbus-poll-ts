@@ -56,53 +56,69 @@ interface request {
 
 export default function PollPage(): ReactElement {
   const [result, setResult] = useState<Buffer>();
-
-  const { register, handleSubmit, getValues } = useForm();
+  const [address, setAddress] = useState(1);
+  const [quantity, setQuantity] = useState(10);
+  const { register, handleSubmit } = useForm();
 
   useEffect(() => {
     service.on(FC3_POLL_RESP, (event, args) => {
       const buffer = Buffer.from(args);
-
       setResult(buffer);
     });
   }, []);
 
   const signedCellRenderer = (rowIndex: number) => {
-    let value = 0;
-    if (result) {
-      value = result.readInt16BE(rowIndex * 2);
+    try {
+      let value = 0;
+      if (result) {
+        value = result.readInt16BE(rowIndex * 2);
+      }
+      return <Cell>{value}</Cell>;
+    } catch (error) {
+      return <Cell>{`-`}</Cell>;
     }
-    return <Cell>{value}</Cell>;
   };
 
   const unsignedCellRenderer = (rowIndex: number) => {
-    let value = 0;
-    if (result) {
-      value = result.readUInt16BE(rowIndex * 2);
+    try {
+      let value = 0;
+      if (result) {
+        value = result.readUInt16BE(rowIndex * 2);
+      }
+      return <Cell>{value}</Cell>;
+    } catch (error) {
+      return <Cell>{`-`}</Cell>;
     }
-    return <Cell>{value}</Cell>;
   };
 
   const floatCellRenderer = (rowIndex: number) => {
     let value = 0;
-    if (result && rowIndex % 2 == 0) {
-      value = result.readFloatBE(rowIndex * 2);
-    }
+    try {
+      if (result && rowIndex % 2 == 0) {
+        value = result.readFloatBE(rowIndex * 2);
+      }
 
-    return <Cell>{rowIndex % 2 == 0 ? `${value}` : `-`}</Cell>;
+      return <Cell>{rowIndex % 2 == 0 ? `${value}` : `-`}</Cell>;
+    } catch (error) {
+      return <Cell>{`-`}</Cell>;
+    }
   };
 
   const hexCellRenderer = (rowIndex: number) => {
-    let value = 0;
-    if (result) {
-      value = result.readUInt16BE(rowIndex * 2);
+    try {
+      let value = 0;
+      if (result) {
+        value = result.readUInt16BE(rowIndex * 2);
+      }
+      return <Cell>{value.toString(16)}</Cell>;
+    } catch (error) {
+      return <Cell>{`-`}</Cell>;
     }
-    return <Cell>{value.toString(16)}</Cell>;
   };
 
   const rowHeaderRender = (rowIndex: number) => {
-    const startAddr = parseInt(getValues("address"));
-    const displayValue = startAddr + rowIndex;
+    const startAddr: number = parseInt(address.toString());
+    const displayValue: number = startAddr + rowIndex;
     return (
       <RowHeaderCell
         style={{ width: 100 }}
@@ -115,7 +131,10 @@ export default function PollPage(): ReactElement {
 
   const onSubmit = (data: request) => {
     console.log(data);
-
+    if (data.address > 0 && data.address < 65535) setAddress(data.address);
+    else return;
+    if (data.quantity > 0 && data.quantity < 125) setQuantity(data.quantity);
+    else return;
     service.readHoldingRegister(data.address, data.quantity, (resp) => {
       setResult(resp);
     });
@@ -134,10 +153,7 @@ export default function PollPage(): ReactElement {
         </Form>
       </UserCard>
 
-      <UserTable
-        numRows={getValues("quantity")}
-        rowHeaderCellRenderer={rowHeaderRender}
-      >
+      <UserTable numRows={quantity} rowHeaderCellRenderer={rowHeaderRender}>
         <Column name="alias" cellRenderer={AliasColumn}></Column>
         <Column name="Signed" cellRenderer={signedCellRenderer} />
         <Column name="Unsigned" cellRenderer={unsignedCellRenderer} />

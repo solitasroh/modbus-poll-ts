@@ -7,3 +7,8 @@ export interface IpcMainEventArgs {
   event: IpcMainEvent;
   args: any[];
 }
+
+export interface ModbusRequestArgs {
+  address: number;
+  length: number;
+}

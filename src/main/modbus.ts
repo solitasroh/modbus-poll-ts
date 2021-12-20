@@ -10,6 +10,7 @@ import {
   MB_IS_CONNECTED,
   MB_SERVER_STATE,
 } from "@src/IpcMessageDefine";
+import { ModbusRequestArgs } from "@src/common/IpcType";
 
 export type onConnectCallback = (result: boolean) => void;
 
@@ -36,6 +37,7 @@ export class ModbusService {
     }
     return this.instance;
   }
+
   static setContents(contents: WebContents): void {
     if (this.instance != null) this.instance.webContents = contents;
   }
@@ -64,36 +66,9 @@ export class ModbusService {
 
     ipcMain.on(MB_DISCONNECT, this.disconnectToServer);
 
-    ipcMain.on(FC3_REQ, async (event, args) => {
-      const { address, length } = args;
-      console.log("request FC3 ", address);
+    ipcMain.on(FC3_REQ, this.pollRegisters);
 
-      if (this.intervalTimer) {
-        clearInterval(this.intervalTimer);
-      }
-
-      this.intervalTimer = setInterval(async () => {
-        try {
-          const result = await this.client.readHoldingRegisters(
-            address,
-            length
-          );
-
-          if (this.webContents != null) {
-            this.webContents.listenerCount;
-            this.webContents.send(
-              FC3_POLL_RESP,
-              result.response.body.valuesAsBuffer
-            );
-          }
-        } catch (error) {
-          console.log("read register error: ", error);
-          clearInterval(this.intervalTimer);
-        }
-      }, this.interval);
-    });
-
-    ipcMain.on(MB_IS_CONNECTED, (evt, args) => {
+    ipcMain.on(MB_IS_CONNECTED, () => {
       this.notifyConnectionState();
     });
   }
@@ -129,6 +104,33 @@ export class ModbusService {
       // this.notifyConnectionState();
       console.log(`socket close error`, error);
     }
+  };
+
+  private pollRegisters = (
+    event: IpcMainEvent,
+    { address, length }: ModbusRequestArgs
+  ) => {
+    console.log("FC3 address: ", address);
+
+    if (this.intervalTimer) {
+      clearInterval(this.intervalTimer);
+    }
+
+    this.intervalTimer = setInterval(async () => {
+      try {
+        const result = await this.client.readHoldingRegisters(address, length);
+
+        if (this.webContents != null) {
+          this.webContents.send(
+            FC3_POLL_RESP,
+            result.response.body.valuesAsBuffer
+          );
+        }
+      } catch (error) {
+        console.log("read register error: ", error);
+        clearInterval(this.intervalTimer);
+      }
+    }, this.interval);
   };
 
   private notifyConnectionState = () => {
