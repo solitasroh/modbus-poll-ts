@@ -6,6 +6,7 @@ import {
   RowHeaderCell,
   Table2,
 } from "@blueprintjs/table";
+import { FC3_POLL_RESP } from "@src/IpcMessageDefine";
 import React, { ReactElement, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import styled from "styled-components";
@@ -55,21 +56,16 @@ interface request {
 
 export default function PollPage(): ReactElement {
   const [result, setResult] = useState<Buffer>();
-  const [requestChanged, setRequestChange] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    getValues,
-    formState: { errors },
-  } = useForm();
+  const { register, handleSubmit, getValues } = useForm();
 
   useEffect(() => {
-    service.on("MB_FC3_RESP", (event, ...args) => {
-      console.log(args);
+    service.on(FC3_POLL_RESP, (event, args) => {
+      const buffer = Buffer.from(args);
+
+      setResult(buffer);
     });
-  }, [requestChanged]);
+  }, []);
 
   const signedCellRenderer = (rowIndex: number) => {
     let value = 0;

@@ -1,6 +1,15 @@
-import { ipcMain } from "electron";
+import { ipcMain, IpcMainEvent, WebContents } from "electron";
 import { ModbusTCPClient } from "jsmodbus";
-import { Socket, SocketConnectOpts } from "net";
+import { Socket } from "net";
+
+import {
+  FC3_POLL_RESP,
+  FC3_REQ,
+  MB_CONNECT,
+  MB_DISCONNECT,
+  MB_IS_CONNECTED,
+  MB_SERVER_STATE,
+} from "@src/IpcMessageDefine";
 
 export type onConnectCallback = (result: boolean) => void;
 
@@ -13,10 +22,13 @@ export interface ModbusConnectOpts {
 
 export class ModbusService {
   client: ModbusTCPClient;
-  socket: Socket = new Socket();
+  socket: Socket;
+
   private static instance: ModbusService;
   private interval = 1000;
+  private timeout = 1000;
   private intervalTimer: NodeJS.Timer;
+  private webContents: WebContents;
 
   static getInstance(): ModbusService {
     if (this.instance == null) {
@@ -24,32 +36,35 @@ export class ModbusService {
     }
     return this.instance;
   }
+  static setContents(contents: WebContents): void {
+    if (this.instance != null) this.instance.webContents = contents;
+  }
 
   constructor() {
+    this.socket = new Socket();
     this.client = new ModbusTCPClient(this.socket);
 
-    ipcMain.on("MB_CONN_REQ", (event, args) => {
-      const { host, port, timeout, pollingInterval }: ModbusConnectOpts = args;
-
-      this.interval = pollingInterval;
-
-      if (this.interval < 1000) {
-        this.interval = 3000;
-      }
-
-      this.connect(host, port, (connected) => {
-        event.sender.send("MB_CONN_RESP", connected);
-      });
+    this.socket.on("connect", () => {
+      console.log("mb> connect to server");
+      this.notifyConnectionState();
     });
 
-    ipcMain.on("MB_DISCONN_REQ", (event, args) => {
-      this.socket.on("close", () => {
-        event.sender.send("MB_DISCOON_RESP", true);
-      });
-      this.disconnect();
+    this.socket.on("error", (err: Error) => {
+      console.log("mb> error connecting server", err);
+      this.notifyConnectionState();
     });
 
-    ipcMain.on("MB_FC3_REQ", async (event, args) => {
+    this.socket.on("close", () => {
+      /// TODO: notify server state to render process
+      console.log("mb> server closed");
+      this.notifyConnectionState();
+    });
+
+    ipcMain.on(MB_CONNECT, this.connectToServer);
+
+    ipcMain.on(MB_DISCONNECT, this.disconnectToServer);
+
+    ipcMain.on(FC3_REQ, async (event, args) => {
       const { address, length } = args;
       console.log("request FC3 ", address);
 
@@ -63,65 +78,66 @@ export class ModbusService {
             address,
             length
           );
-          event.sender.send("MB_FC3_RESP", result.response.body.valuesAsBuffer);
+
+          if (this.webContents != null) {
+            this.webContents.listenerCount;
+            this.webContents.send(
+              FC3_POLL_RESP,
+              result.response.body.valuesAsBuffer
+            );
+          }
         } catch (error) {
-          console.log(error);
+          console.log("read register error: ", error);
+          clearInterval(this.intervalTimer);
         }
       }, this.interval);
     });
 
-    ipcMain.on("MB_SERVER_STATE", (event, args) => {
-      if (this.client) {
-        event.sender.send("MB_SERVER_STATE_RESP", this.client.connectionState);
-      } else {
-        event.sender.send("MB_SERVER_STATE_RESP", "offline");
+    ipcMain.on(MB_IS_CONNECTED, (evt, args) => {
+      this.notifyConnectionState();
+    });
+  }
+
+  private connectToServer = (event: IpcMainEvent, args: ModbusConnectOpts) => {
+    const { host, port, timeout, pollingInterval }: ModbusConnectOpts = args;
+
+    console.log(
+      `connect: ${host}:${port} (interval:${pollingInterval}, timeout: ${timeout})`
+    );
+
+    this.timeout = timeout;
+    this.interval = pollingInterval;
+
+    if (this.interval < 1000) {
+      this.interval = 3000;
+    }
+
+    this.socket.connect({ host, port });
+  };
+
+  private disconnectToServer = (event: IpcMainEvent) => {
+    try {
+      if (this.socket === null) return;
+
+      this.socket.end(() => {
+        this.notifyConnectionState();
+      });
+
+      this.socket.destroy();
+    } catch (error) {
+      // do nothing
+      // this.notifyConnectionState();
+      console.log(`socket close error`, error);
+    }
+  };
+
+  private notifyConnectionState = () => {
+    if (this.webContents !== null) {
+      try {
+        this.webContents.send(MB_SERVER_STATE, this.client.connectionState);
+      } catch (error) {
+        console.log("mb> notify connect state error", error);
       }
-    });
-  }
-
-  connect(
-    host: string,
-    port = 502,
-    onConnect?: onConnectCallback,
-    retryConnect?: boolean
-  ): void {
-    const options: SocketConnectOpts = {
-      host,
-      port,
-    };
-
-    this.socket.setTimeout(1000, () => {
-      console.log("timeout!!!");
-    });
-
-    this.socket.on("connect", () => {
-      console.log("mb> connect to server");
-      onConnect(true);
-    });
-
-    this.socket.on("timeout", () => {
-      console.log("mb> timeout server");
-      onConnect(false);
-    });
-
-    this.socket.on("error", (err: Error) => {
-      console.log("mb> error connecting server", err);
-      onConnect(false);
-    });
-
-    this.socket.connect(options);
-  }
-
-  disconnect(): void {
-    this.socket.end(() => {
-      console.log("socket end");
-    });
-
-    this.socket.destroy();
-    this.socket.removeAllListeners();
-  }
-
-  async pollRequest(address: number, length: number) {
-    return await this.client.readHoldingRegisters(address, length);
-  }
+    }
+  };
 }

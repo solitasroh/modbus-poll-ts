@@ -64,9 +64,14 @@ export default function app(): ReactElement {
   const [connectionString, setConnectionString] = useState("connect config");
 
   useEffect(() => {
-    service.connectionStateCheck((evt, args) => {
-      if (args === "online") {
-        service.disconnectServer();
+    service.connectionStateCheck((evt, result) => {
+      console.log(`connect result = ${result}`);
+      if (result === "online") {
+        setConnectionString("Connection Close");
+        setConnected(true);
+      } else if (result === "offline") {
+        setConnectionString("Connection Config");
+        setConnected(false);
       }
     });
   }, []);
@@ -75,23 +80,14 @@ export default function app(): ReactElement {
     (submit: boolean, config?: ConnectConfig) => {
       setIsOpen(false);
       const { ipAddress, port, timeout, polldelay } = config;
-      console.log(config);
 
       if (submit && config) {
-        service
-          .connectServer(
-            ipAddress,
-            parseInt(port),
-            parseInt(timeout),
-            parseInt(polldelay)
-          )
-          .then((result) => {
-            console.log(`connect result = ${result}`);
-            if (result) {
-              setConnectionString("Connection Close");
-            }
-            setConnected(result);
-          });
+        service.connectServer(
+          ipAddress,
+          parseInt(port),
+          parseInt(timeout),
+          parseInt(polldelay)
+        );
       }
     },
     []
@@ -100,8 +96,6 @@ export default function app(): ReactElement {
   const connectionConfigClicked = async () => {
     if (isConnect) {
       service.disconnectServer();
-      setConnectionString("Connect config");
-      setConnected(false);
     } else {
       setIsOpen(true);
     }

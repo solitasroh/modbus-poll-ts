@@ -91,7 +91,7 @@ class Main {
 
     // Open the DevTools.
     this.mainWindow.webContents.openDevTools({ mode: "detach" });
-
+    ModbusService.setContents(this.mainWindow.webContents);
     // this.mainWindow.on('close', (e) => {
     //   e.preventDefault();
     //   this.mainWindow.hide();

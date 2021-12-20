@@ -1,5 +1,12 @@
 import { IpcRenderer, IpcRendererEvent } from "electron";
 import { Buffer } from "buffer";
+import {
+  FC3_REQ,
+  MB_CONNECT,
+  MB_DISCONNECT,
+  MB_IS_CONNECTED,
+  MB_SERVER_STATE,
+} from "@src/IpcMessageDefine";
 export type IpcEventHandler = (event: IpcRendererEvent, ...args: any[]) => void;
 
 export default class IpcService {
@@ -27,9 +34,8 @@ export default class IpcService {
     if (!this.ipcRenderer) {
       this.initIpcRenderer();
     }
-    this.ipcRenderer.send("MB_SERVER_STATE");
-
-    this.ipcRenderer.once("MB_SERVER_STATE_RESP", listener);
+    this.ipcRenderer.send(MB_IS_CONNECTED);
+    this.ipcRenderer.on(MB_SERVER_STATE, listener);
   }
 
   public connectServer(
@@ -37,22 +43,16 @@ export default class IpcService {
     port: number,
     timeout: number,
     pollingInterval: number
-  ): Promise<boolean> {
+  ): void {
     if (!this.ipcRenderer) {
       this.initIpcRenderer();
     }
 
-    this.ipcRenderer.send("MB_CONN_REQ", {
+    this.ipcRenderer.send(MB_CONNECT, {
       host,
       port,
       timeout,
       pollingInterval,
-    });
-
-    return new Promise((resolve) => {
-      this.ipcRenderer.once("MB_CONN_RESP", (event, response) => {
-        resolve(response);
-      });
     });
   }
 
@@ -61,7 +61,7 @@ export default class IpcService {
       this.initIpcRenderer();
     }
 
-    this.ipcRenderer.send("MB_DISCONN_REQ");
+    this.ipcRenderer.send(MB_DISCONNECT);
 
     return new Promise((resolve) => {
       this.ipcRenderer.once("MB_DISCONN_RESP", (event, response) => {
@@ -79,22 +79,19 @@ export default class IpcService {
       this.initIpcRenderer();
     }
 
-    this.ipcRenderer.removeAllListeners("MB_FC3_REQ");
-    this.ipcRenderer.removeAllListeners("MB_FC3_RESP");
-
-    this.ipcRenderer.send("MB_FC3_REQ", { address, length });
-    // this.ipcRenderer.on("MB_FC3_RESP", (event, response) => {
-    //   console.log("resp FC3");
-    //   const buffer = Buffer.from(response); // 왜 이래야하는지 모르겠음 ㅠ
-    //   callback(buffer);
-    // });
+    this.ipcRenderer.send(FC3_REQ, { address, length });
   }
 
   public on(channel: string, eventHandler: IpcEventHandler): void {
     if (!this.ipcRenderer) {
       this.initIpcRenderer();
     }
-    this.ipcRenderer.on(channel, eventHandler);
+
+    try {
+      this.ipcRenderer.on(channel, eventHandler);
+    } catch (error) {
+      // nothing to do
+    }
   }
 
   public removeListener(channel: string, eventHandler: IpcEventHandler): void {
