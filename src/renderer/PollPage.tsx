@@ -19,6 +19,9 @@ const Container = styled.div`
   align-items: stretch;
 `;
 
+const ValueCell = styled(Cell)`
+  text-align: right;
+`;
 const UserTable = styled(Table2)`
   margin: 0px;
   height: 100%;
@@ -55,7 +58,7 @@ export default function PollPage(props: Props): ReactElement {
       if (result) {
         value = result.readInt16BE(rowIndex * 2);
       }
-      return <Cell>{value}</Cell>;
+      return <ValueCell>{value}</ValueCell>;
     } catch (error) {
       return <Cell>{`-`}</Cell>;
     }
@@ -67,7 +70,7 @@ export default function PollPage(props: Props): ReactElement {
       if (result) {
         value = result.readUInt16BE(rowIndex * 2);
       }
-      return <Cell>{value}</Cell>;
+      return <ValueCell>{value}</ValueCell>;
     } catch (error) {
       return <Cell>{`-`}</Cell>;
     }
@@ -80,7 +83,11 @@ export default function PollPage(props: Props): ReactElement {
         value = result.readFloatBE(rowIndex * 2);
       }
 
-      return <Cell>{rowIndex % 2 == 0 ? `${value}` : `-`}</Cell>;
+      return (
+        <ValueCell>
+          {rowIndex % 2 == 0 ? `${value.toPrecision(4)}` : `-`}
+        </ValueCell>
+      );
     } catch (error) {
       return <Cell>{`-`}</Cell>;
     }
@@ -92,7 +99,26 @@ export default function PollPage(props: Props): ReactElement {
       if (result) {
         value = result.readUInt16BE(rowIndex * 2);
       }
-      return <Cell>{value.toString(16)}</Cell>;
+      return (
+        <ValueCell>{`0x${value
+          .toString(16)
+          .padStart(4, "0")
+          .toUpperCase()}`}</ValueCell>
+      );
+    } catch (error) {
+      return <Cell>{`-`}</Cell>;
+    }
+  };
+
+  const charCellRenderer = (rowIndex: number) => {
+    try {
+      let hVal = 0;
+      let lVal = 0;
+      if (result) {
+        hVal = result.readUInt8(rowIndex * 2);
+        lVal = result.readUInt8(rowIndex * 2 + 1);
+      }
+      return <ValueCell>{`${String.fromCharCode(hVal, lVal)}`}</ValueCell>;
     } catch (error) {
       return <Cell>{`-`}</Cell>;
     }
@@ -128,6 +154,7 @@ export default function PollPage(props: Props): ReactElement {
         <Column name="unsigned" cellRenderer={unsignedCellRenderer} />
         <Column name="hex" cellRenderer={hexCellRenderer} />
         <Column name="float" cellRenderer={floatCellRenderer} />
+        <Column name="char" cellRenderer={charCellRenderer} />
       </UserTable>
     </Container>
   );
