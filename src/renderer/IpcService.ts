@@ -34,8 +34,8 @@ export default class IpcService {
     if (!this.ipcRenderer) {
       this.initIpcRenderer();
     }
-    this.ipcRenderer.send(MB_IS_CONNECTED);
     this.ipcRenderer.on(MB_SERVER_STATE, listener);
+    this.ipcRenderer.send(MB_IS_CONNECTED);
   }
 
   public connectServer(
@@ -73,7 +73,7 @@ export default class IpcService {
   public readHoldingRegister(
     address: number,
     length: number,
-    scanRate: number,
+    scanRate: number
   ): void {
     if (!this.ipcRenderer) {
       this.initIpcRenderer();

@@ -20,17 +20,29 @@ const Container = styled.div`
 `;
 
 const UserTable = styled(Table2)`
-  margin: 5px;
+  margin: 0px;
+  height: 100%;
 `;
 
 const service = IpcService.getInstance();
-
-export default function PollPage(): ReactElement {
+interface Props {
+  address?: number;
+  quantity?: number;
+}
+export default function PollPage(props: Props): ReactElement {
   const [result, setResult] = useState<Buffer>();
   const [address, setAddress] = useState(1);
   const [quantity, setQuantity] = useState(10);
 
   useEffect(() => {
+    if (props?.address) {
+      setAddress(props.address);
+    }
+
+    if (props?.quantity) {
+      setQuantity(props.quantity);
+    }
+
     service.on(FC3_POLL_RESP, (event, args) => {
       const buffer = Buffer.from(args);
       setResult(buffer);
@@ -99,23 +111,23 @@ export default function PollPage(): ReactElement {
 
   const AliasColumn = (rowIndex: number) => <EditableCell2></EditableCell2>;
 
-  const callbackFunc = (address: number, quantity: number) => {
-    if (address > 0 && address < 65535) setAddress(address);
+  const forwardInfo = (address: number, quantity: number) => {
+    if (address >= 0 && address < 65535) setAddress(address);
     else return;
-    if (quantity > 0 && quantity < 125) setQuantity(quantity);
+    if (quantity >= 0 && quantity < 125) setQuantity(quantity);
     else return;
   };
 
   return (
     <Container>
-      <ReadWriteDefinition callback={callbackFunc} />
+      <ReadWriteDefinition forwardInfo={forwardInfo} />
 
       <UserTable numRows={quantity} rowHeaderCellRenderer={rowHeaderRender}>
         <Column name="alias" cellRenderer={AliasColumn}></Column>
-        <Column name="Signed" cellRenderer={signedCellRenderer} />
-        <Column name="Unsigned" cellRenderer={unsignedCellRenderer} />
-        <Column name="HEX" cellRenderer={hexCellRenderer} />
-        <Column name="Float" cellRenderer={floatCellRenderer} />
+        <Column name="signed" cellRenderer={signedCellRenderer} />
+        <Column name="unsigned" cellRenderer={unsignedCellRenderer} />
+        <Column name="hex" cellRenderer={hexCellRenderer} />
+        <Column name="float" cellRenderer={floatCellRenderer} />
       </UserTable>
     </Container>
   );

@@ -1,5 +1,5 @@
-import { Button, Card, Checkbox, H6 } from "@blueprintjs/core";
-import React, { ReactElement } from "react";
+import { Button, Card, H6 } from "@blueprintjs/core";
+import React, { ReactElement, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import styled from "styled-components";
 import IpcService from "./IpcService";
@@ -50,29 +50,60 @@ interface request {
 }
 
 interface Props {
-  callback: (address: number, quantity: number) => void;
+  forwardInfo: (address: number, quantity: number) => void;
 }
 
-export default function ReadWriteDefinition({ callback }: Props): ReactElement {
-  const { register, handleSubmit } = useForm();
+const validAddress = (
+  address: number,
+  quantity: number,
+  isPLCBase: boolean
+): boolean => {
+  const validRange: number =
+    parseInt(address.toString()) + parseInt(quantity.toString());
+  console.log(validRange);
+  if (isPLCBase) {
+    return validRange >= 1 && validRange <= 65536;
+  }
+  return validRange >= 0 && validRange <= 65535;
+};
+
+export default function ReadWriteDefinition({
+  forwardInfo: forwardRegisterInfo,
+}: Props): ReactElement {
+  const { register, handleSubmit, getValues } = useForm();
+
+  useEffect(() => {
+    service.connectionStateCheck((evt, result) => {
+      if (result === "online") {
+        let address = getValues("address") ?? 1;
+        const quantity = getValues("quantity") ?? 10;
+        const scanRate = getValues("scanRate") ?? 1000;
+
+        const plcAddressBase = getValues("plcAddress") ?? false;
+        address = plcAddressBase ? address - 1 : address;
+
+        if (validAddress(address, quantity, plcAddressBase)) {
+          service.readHoldingRegister(address, quantity, scanRate);
+          forwardRegisterInfo(address, quantity);
+        } else {
+          alert("invalid range");
+        }
+      }
+    });
+  }, []);
 
   const onSubmit = (data: request) => {
-    if (data.address <= 0 || data.address > 65535) return;
-
     if (data.quantity <= 0 || data.quantity > 125) return;
-
     if (data.scanRate <= 0) return;
-    console.log(data.plcAddress);
 
-    
-    if (data.plcAddress) {
-        callback(data.address, data.quantity);
-        service.readHoldingRegister(data.address-1, data.quantity, data.scanRate);
+    const address = data.plcAddress ? data.address - 1 : data.address;
+
+    if (validAddress(address, data.quantity, data.plcAddress)) {
+      service.readHoldingRegister(address, data.quantity, data.scanRate);
+      forwardRegisterInfo(data.address, data.quantity);
     } else {
-        callback(data.address, data.quantity);
-        service.readHoldingRegister(data.address, data.quantity, data.scanRate);
+      alert("invalid range");
     }
-    
   };
 
   return (
@@ -81,13 +112,17 @@ export default function ReadWriteDefinition({ callback }: Props): ReactElement {
         <H6>Register Configuration</H6>
         <Form onSubmit={handleSubmit(onSubmit)}>
           <Label>start address</Label>
-          <Input type="text" {...register("address")} />
+          <Input {...register("address")} defaultValue={1} />
           <Label>quantity</Label>
-          <Input type="text" {...register("quantity")} />
+          <Input {...register("quantity")} defaultValue={10} />
           <Label>scan rate(ms)</Label>
-          <Input type="text" {...register("scanRate")} />
+          <Input {...register("scanRate")} defaultValue={1000} />
           <div>
-            <UserCheckBox type="checkbox" {...register("plcAddress")}></UserCheckBox>
+            <UserCheckBox
+              type="checkbox"
+              {...register("plcAddress")}
+              defaultChecked
+            />
             <Label>PLC Address base</Label>
           </div>
           <Submit type="submit">submit</Submit>

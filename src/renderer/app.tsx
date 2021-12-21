@@ -1,6 +1,6 @@
 import React, { ReactElement, useState, useEffect } from "react";
 import IpcService from "./IpcService";
-import { createGlobalStyle } from "styled-components";
+import styled, { createGlobalStyle } from "styled-components";
 import reset from "styled-reset";
 import {
   Navbar,
@@ -58,19 +58,32 @@ interface ConnectConfig {
   polldelay: string;
 }
 
+const MainContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+`;
+
+const ViewContainer = styled.div`
+  display: flex;
+  flex-direct: row;
+  height: 100%;
+`;
+const connectionText = ["connect", "disconnect"];
+
 export default function app(): ReactElement {
   const [isOpen, setIsOpen] = useState<boolean>();
   const [isConnect, setConnected] = useState<boolean>(false);
-  const [connectionString, setConnectionString] = useState("connect config");
+  const [connectionString, setConnectionString] = useState(connectionText[0]);
 
   useEffect(() => {
     service.connectionStateCheck((evt, result) => {
       console.log(`connect result = ${result}`);
       if (result === "online") {
-        setConnectionString("Connection Close");
+        setConnectionString(connectionText[1]);
         setConnected(true);
       } else if (result === "offline") {
-        setConnectionString("Connection Config");
+        setConnectionString(connectionText[0]);
         setConnected(false);
       }
     });
@@ -102,7 +115,7 @@ export default function app(): ReactElement {
   };
 
   return (
-    <>
+    <MainContainer>
       <GlobalStyle />
       <Navbar>
         <NavbarGroup align={Alignment.LEFT}>
@@ -116,14 +129,14 @@ export default function app(): ReactElement {
           ></Button>
         </NavbarGroup>
       </Navbar>
-      <div style={{ display: "flex" }}>
+      <ViewContainer>
         <ConnectDialog
           isOpen={isOpen}
           handleClose={handleConnectionServer}
         ></ConnectDialog>
 
         <PollPage />
-      </div>
-    </>
+      </ViewContainer>
+    </MainContainer>
   );
 }
