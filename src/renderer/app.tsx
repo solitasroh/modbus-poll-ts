@@ -135,7 +135,7 @@ export default function app(): ReactElement {
           handleClose={handleConnectionServer}
         ></ConnectDialog>
 
-        <PollPage address={1} />
+        <PollPage />
       </ViewContainer>
     </MainContainer>
   );

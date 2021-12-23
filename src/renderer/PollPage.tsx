@@ -53,8 +53,7 @@ export type FormattedData = {
   hex: string;
 };
 export default function PollPage(props: Props): ReactElement {
-  const [result, setResult] = useState<Buffer>();
-  const [address, setAddress] = useState(() => 5);
+  const [address, setAddress] = useState(1);
   const [quantity, setQuantity] = useState(10);
   const [registerData, setRegisterData] = useState<RegisterData>();
 
@@ -70,9 +69,9 @@ export default function PollPage(props: Props): ReactElement {
 
     service.on(FC3_POLL_RESP, (event, args) => {
       const buffer = Buffer.from(args);
-      setResult(buffer);
 
       const registerData = new RegisterData(address, buffer);
+      console.log(registerData);
       setRegisterData(registerData);
     });
   }, []);
@@ -82,23 +81,23 @@ export default function PollPage(props: Props): ReactElement {
     return startAddr + index;
   };
 
-  const charCellRenderer = (rowIndex: number) => {
-    try {
-      let hVal = 0;
-      let lVal = 0;
-      if (result) {
-        hVal = result.readUInt8(rowIndex * 2);
-        lVal = result.readUInt8(rowIndex * 2 + 1);
-      }
-      return <ValueCell>{`${String.fromCharCode(hVal, lVal)}`}</ValueCell>;
-    } catch (error) {
-      return <Cell>{`-`}</Cell>;
-    }
-  };
+  // const charCellRenderer = (rowIndex: number) => {
+  //   try {
+  //     let hVal = 0;
+  //     let lVal = 0;
+  //     if (result) {
+  //       hVal = result.readUInt8(rowIndex * 2);
+  //       lVal = result.readUInt8(rowIndex * 2 + 1);
+  //     }
+  //     return <ValueCell>{`${String.fromCharCode(hVal, lVal)}`}</ValueCell>;
+  //   } catch (error) {
+  //     return <Cell>{`-`}</Cell>;
+  //   }
+  // };
 
   const rowHeaderRender = (rowIndex: number) => {
     const startAddr: number = parseInt(address.toString());
-
+    console.log("row header address", address);
     const displayValue: number = startAddr + rowIndex;
     return (
       <RowHeaderCell
@@ -142,6 +141,7 @@ export default function PollPage(props: Props): ReactElement {
         ></EditableCell2>
       );
     } catch (error) {
+      console.log(error, rowIndex);
       return <Cell>{`-`}</Cell>;
     }
   };
@@ -190,7 +190,7 @@ export default function PollPage(props: Props): ReactElement {
             name="float"
             cellRenderer={(rowIndex) => renderer(rowIndex, DataTyped.Float)}
           />
-          <Column name="char" cellRenderer={charCellRenderer} />
+          {/* <Column name="char" cellRenderer={charCellRenderer} /> */}
         </UserTable>
       </HotkeysProvider>
     </Container>

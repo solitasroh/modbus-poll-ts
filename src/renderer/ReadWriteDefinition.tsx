@@ -75,15 +75,16 @@ export default function ReadWriteDefinition({
   useEffect(() => {
     service.connectionStateCheck((evt, result) => {
       if (result === "online") {
-        let address = getValues("address") ?? 1;
+        const address = getValues("address") ?? 1;
         const quantity = getValues("quantity") ?? 10;
         const scanRate = getValues("scanRate") ?? 1000;
 
         const plcAddressBase = getValues("plcAddress") ?? false;
-        address = plcAddressBase ? address - 1 : address;
+        console.log("address is ", address);
+        const protocolAddr = plcAddressBase ? address - 1 : address;
 
-        if (validAddress(address, quantity, plcAddressBase)) {
-          service.readHoldingRegister(address, quantity, scanRate);
+        if (validAddress(protocolAddr, quantity, plcAddressBase)) {
+          service.readHoldingRegister(protocolAddr, quantity, scanRate);
           forwardRegisterInfo(address, quantity);
         } else {
           alert("invalid range");
