@@ -12,6 +12,9 @@ import IpcService from "./IpcService";
 import ReadWriteDefinition from "./ReadWriteDefinition";
 
 import { FC3_POLL_RESP } from "@src/IpcMessageDefine";
+import { HotkeysProvider } from "@blueprintjs/core";
+
+import { RegisterData } from "./RegisterData";
 
 const Container = styled.div`
   display: flex;
@@ -32,13 +35,32 @@ interface Props {
   address?: number;
   quantity?: number;
 }
+export enum Endian {
+  Big,
+  Little,
+}
+enum DataTyped {
+  Signed,
+  Unsigned,
+  Hex,
+  Float,
+}
+export type FormattedData = {
+  address: number;
+  uint16: number;
+  int16: number;
+  float: string;
+  hex: string;
+};
 export default function PollPage(props: Props): ReactElement {
   const [result, setResult] = useState<Buffer>();
-  const [address, setAddress] = useState(1);
+  const [address, setAddress] = useState(() => 5);
   const [quantity, setQuantity] = useState(10);
+  const [registerData, setRegisterData] = useState<RegisterData>();
 
   useEffect(() => {
     if (props?.address) {
+      console.log("adddress is ", props.address);
       setAddress(props.address);
     }
 
@@ -49,65 +71,15 @@ export default function PollPage(props: Props): ReactElement {
     service.on(FC3_POLL_RESP, (event, args) => {
       const buffer = Buffer.from(args);
       setResult(buffer);
+
+      const registerData = new RegisterData(address, buffer);
+      setRegisterData(registerData);
     });
   }, []);
 
-  const signedCellRenderer = (rowIndex: number) => {
-    try {
-      let value = 0;
-      if (result) {
-        value = result.readInt16BE(rowIndex * 2);
-      }
-      return <ValueCell>{value}</ValueCell>;
-    } catch (error) {
-      return <Cell>{`-`}</Cell>;
-    }
-  };
-
-  const unsignedCellRenderer = (rowIndex: number) => {
-    try {
-      let value = 0;
-      if (result) {
-        value = result.readUInt16BE(rowIndex * 2);
-      }
-      return <ValueCell>{value}</ValueCell>;
-    } catch (error) {
-      return <Cell>{`-`}</Cell>;
-    }
-  };
-
-  const floatCellRenderer = (rowIndex: number) => {
-    let value = 0;
-    try {
-      if (result && rowIndex % 2 == 0) {
-        value = result.readFloatBE(rowIndex * 2);
-      }
-
-      return (
-        <ValueCell>
-          {rowIndex % 2 == 0 ? `${value.toPrecision(4)}` : `-`}
-        </ValueCell>
-      );
-    } catch (error) {
-      return <Cell>{`-`}</Cell>;
-    }
-  };
-
-  const hexCellRenderer = (rowIndex: number) => {
-    try {
-      let value = 0;
-      if (result) {
-        value = result.readUInt16BE(rowIndex * 2);
-      }
-      return (
-        <ValueCell>{`0x${value
-          .toString(16)
-          .padStart(4, "0")
-          .toUpperCase()}`}</ValueCell>
-      );
-    } catch (error) {
-      return <Cell>{`-`}</Cell>;
-    }
+  const getAddress = (index: number) => {
+    const startAddr: number = parseInt(address.toString());
+    return startAddr + index;
   };
 
   const charCellRenderer = (rowIndex: number) => {
@@ -126,6 +98,7 @@ export default function PollPage(props: Props): ReactElement {
 
   const rowHeaderRender = (rowIndex: number) => {
     const startAddr: number = parseInt(address.toString());
+
     const displayValue: number = startAddr + rowIndex;
     return (
       <RowHeaderCell
@@ -134,8 +107,55 @@ export default function PollPage(props: Props): ReactElement {
       ></RowHeaderCell>
     );
   };
+  const caseFormattedValue = (
+    rowIndex: number,
+    type: DataTyped
+  ): number | string => {
+    switch (type) {
+      case DataTyped.Signed:
+        return registerData.fetchData(getAddress(rowIndex)).int16;
+      case DataTyped.Unsigned:
+        return registerData.fetchData(getAddress(rowIndex)).uint16;
+      case DataTyped.Float:
+        return registerData.fetchData(getAddress(rowIndex)).float;
+      case DataTyped.Hex:
+        return registerData.fetchData(getAddress(rowIndex)).hex;
+    }
+    return 0;
+  };
+  const ValueChanged = (
+    value: string,
+    rowIndex: number,
+    columnIndex: number
+  ) => {
+    const address = getAddress(rowIndex);
+    console.log(value, rowIndex);
+  };
+  const renderer = (rowIndex: number, type: DataTyped) => {
+    try {
+      return (
+        <EditableCell2
+          onConfirm={(value, rowIndex, columnIndex) =>
+            ValueChanged(value, rowIndex, columnIndex)
+          }
+          value={caseFormattedValue(rowIndex, type).toString()}
+        ></EditableCell2>
+      );
+    } catch (error) {
+      return <Cell>{`-`}</Cell>;
+    }
+  };
+  const aliasConfirm = (
+    value: string,
+    rowIndex?: number,
+    columnIndex?: number
+  ) => {
+    console.log(value);
+  };
 
-  const AliasColumn = (rowIndex: number) => <EditableCell2></EditableCell2>;
+  const AliasColumn = (rowIndex: number) => (
+    <EditableCell2 onConfirm={aliasConfirm}></EditableCell2>
+  );
 
   const forwardInfo = (address: number, quantity: number) => {
     if (address >= 0 && address < 65535) setAddress(address);
@@ -147,15 +167,32 @@ export default function PollPage(props: Props): ReactElement {
   return (
     <Container>
       <ReadWriteDefinition forwardInfo={forwardInfo} />
-
-      <UserTable numRows={quantity} rowHeaderCellRenderer={rowHeaderRender}>
-        <Column name="alias" cellRenderer={AliasColumn}></Column>
-        <Column name="signed" cellRenderer={signedCellRenderer} />
-        <Column name="unsigned" cellRenderer={unsignedCellRenderer} />
-        <Column name="hex" cellRenderer={hexCellRenderer} />
-        <Column name="float" cellRenderer={floatCellRenderer} />
-        <Column name="char" cellRenderer={charCellRenderer} />
-      </UserTable>
+      <HotkeysProvider>
+        <UserTable
+          numRows={quantity}
+          rowHeaderCellRenderer={rowHeaderRender}
+          enableFocusedCell
+        >
+          <Column name="alias" cellRenderer={AliasColumn}></Column>
+          <Column
+            name="signed"
+            cellRenderer={(rowIndex) => renderer(rowIndex, DataTyped.Signed)}
+          />
+          <Column
+            name="unsigned"
+            cellRenderer={(rowIndex) => renderer(rowIndex, DataTyped.Unsigned)}
+          />
+          <Column
+            name="hex"
+            cellRenderer={(rowIndex) => renderer(rowIndex, DataTyped.Hex)}
+          />
+          <Column
+            name="float"
+            cellRenderer={(rowIndex) => renderer(rowIndex, DataTyped.Float)}
+          />
+          <Column name="char" cellRenderer={charCellRenderer} />
+        </UserTable>
+      </HotkeysProvider>
     </Container>
   );
 }
